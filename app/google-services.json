@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "669739885351",
+    "project_id": "spotto-64844",
+    "storage_bucket": "spotto-64844.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:669739885351:android:cea05cbe0f72a8fcffff02",
+        "android_client_info": {
+          "package_name": "com.example.spotto"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCp_R1C-JGsrXhvAzdy57oTyELVzrPFfXA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
