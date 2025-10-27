@@ -1,8 +1,11 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
     <style name="Base.Theme.Spotto" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/mint_green</item>
+        <item name="colorPrimaryVariant">@color/mint_green</item> <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/mint_green</item> <item name="colorSecondaryVariant">@color/mint_green</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item> <item name="android:windowBackground">@color/white</item>
+        <item name="android:textColor">@color/dark_gray</item>
     </style>
 
     <style name="Theme.Spotto" parent="Base.Theme.Spotto" />
