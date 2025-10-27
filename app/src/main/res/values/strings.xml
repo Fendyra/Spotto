@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">Spotto</string>
+
+    <string-array name="spot_categories">
+        <item>Cafe</item>
+        <item>Chill</item>
+        <item>Inspo</item>
+        <item>Learn</item>
+        <item>Tour</item>
+    </string-array>
 </resources>

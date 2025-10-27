@@ -23,13 +23,15 @@ import android.view.ViewGroup // <-- TAMBAHKAN INI
 
 // Data class untuk menampung data Spot
 data class Spot(
-    val id: String = "", // ID Dokumen dari Firestore
-    val uid: String = "", // ID User yang membuat
+    val id: String = "",
+    val uid: String = "",
     val name: String = "",
     val note: String = "",
-    val latitude: Double = 0.0, // <-- TAMBAHKAN INI
-    val longitude: Double = 0.0, // <-- TAMBAHKAN INI
-    val timestamp: Timestamp? = null // <-- TAMBAHKAN INI (gunakan ? = null agar kompatibel)
+    val category: String = "", // <-- TAMBAHKAN INI
+    val photoUrl: String = "", // <-- TAMBAHKAN INI
+    val latitude: Double = 0.0,
+    val longitude: Double = 0.0,
+    val timestamp: Timestamp? = null
 )
 
 // Skeleton Adapter untuk RecyclerView
