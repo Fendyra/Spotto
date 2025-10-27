@@ -17,6 +17,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query // Import Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.Timestamp
 import android.view.LayoutInflater // <-- TAMBAHKAN INI
 import android.view.ViewGroup // <-- TAMBAHKAN INI
 
@@ -25,8 +26,10 @@ data class Spot(
     val id: String = "", // ID Dokumen dari Firestore
     val uid: String = "", // ID User yang membuat
     val name: String = "",
-    val note: String = ""
-    // Tambahkan field lain jika perlu (misal: latitude, longitude, timestamp)
+    val note: String = "",
+    val latitude: Double = 0.0, // <-- TAMBAHKAN INI
+    val longitude: Double = 0.0, // <-- TAMBAHKAN INI
+    val timestamp: Timestamp? = null // <-- TAMBAHKAN INI (gunakan ? = null agar kompatibel)
 )
 
 // Skeleton Adapter untuk RecyclerView
@@ -86,9 +89,7 @@ class HomeActivity : AppCompatActivity() {
 
         // Setup FAB Click Listener
         binding.fabAddSpot.setOnClickListener {
-            // Arahkan ke AddSpotActivity (buat activity ini nanti)
-            // startActivity(Intent(this, AddSpotActivity::class.java))
-            Toast.makeText(this, "Fitur Tambah Spot belum dibuat", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, AddSpotActivity::class.java))
         }
 
         // Muat data dari Firestore
