@@ -3,9 +3,11 @@ package com.example.spotto
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -14,12 +16,12 @@ import com.example.spotto.databinding.ActivityHomeBinding
 import com.example.spotto.databinding.ItemSpotBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.firestore.ktx.toObject // <-- IMPORT BARU DAN PENTING
 import com.google.firebase.ktx.Firebase
-import android.view.LayoutInflater
-import android.view.ViewGroup
-import com.google.firebase.firestore.ListenerRegistration
+import java.lang.Exception // Pastikan ini ada
 
 data class Spot(
     val id: String = "",
@@ -68,8 +70,7 @@ class HomeActivity : AppCompatActivity() {
         firebaseAuth = FirebaseAuth.getInstance()
         firestore = Firebase.firestore
 
-        val currentUser = firebaseAuth.currentUser
-        if (currentUser == null) {
+        if (firebaseAuth.currentUser == null) {
             goToLogin()
             return
         }
@@ -78,7 +79,7 @@ class HomeActivity : AppCompatActivity() {
         setupRecyclerView()
 
         binding.fabAddSpot.setOnClickListener {
-            Toast.makeText(this, "Fitur Tambah Spot belum dibuat", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, AddSpotActivity::class.java)) // Pastikan ini sudah diubah
         }
         showLoading(true)
     }
@@ -93,7 +94,6 @@ class HomeActivity : AppCompatActivity() {
         firestoreListener?.remove()
     }
 
-
     private fun setupRecyclerView() {
         spotAdapter = SpotAdapter(spotList)
         binding.rvSpots.apply {
@@ -104,7 +104,6 @@ class HomeActivity : AppCompatActivity() {
 
     private fun attachFirestoreListener() {
         val currentUser = firebaseAuth.currentUser ?: return
-
         showLoading(true)
 
         val query = firestore.collection("spots")
@@ -125,8 +124,14 @@ class HomeActivity : AppCompatActivity() {
                 spotList.clear()
                 for (doc in snapshots) {
                     try {
-                        val spot = doc.toObject<Spot>().copy(id = doc.id)
-                        spotList.add(spot)
+                        // --- PERUBAHAN UTAMA DI SINI ---
+                        val spot = doc.toObject<Spot>()?.copy(id = doc.id) // Gunakan reified toObject dan ?.copy()
+                        if (spot != null) { // Tambahkan null check
+                            spotList.add(spot)
+                        } else {
+                            Log.w(TAG, "Gagal konversi dokumen ${doc.id}, mungkin null.")
+                        }
+                        // ------------------------------
                     } catch (ex: Exception) {
                         Log.e(TAG, "Error converting document ${doc.id}", ex)
                     }
@@ -141,7 +146,9 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+
     private fun showLoading(isLoading: Boolean) {
+        // Uncomment baris ini jika sudah menambahkan ProgressBar di activity_home.xml
         // binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
         binding.rvSpots.visibility = if (isLoading) View.GONE else View.VISIBLE
         binding.tvEmptyState.visibility = if (isLoading) View.GONE else View.VISIBLE

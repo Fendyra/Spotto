@@ -39,6 +39,9 @@
         <activity
             android:name=".HomeActivity"
             android:exported="false" />
+        <activity
+            android:name=".AddSpotActivity"
+            android:exported="false" />
 
     </application>
 </manifest>
