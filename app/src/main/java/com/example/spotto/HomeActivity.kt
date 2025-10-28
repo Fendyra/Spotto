@@ -20,6 +20,8 @@ import com.google.firebase.ktx.Firebase
 import com.google.firebase.Timestamp
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import java.text.SimpleDateFormat // IMPORT BARU
+import java.util.Locale // IMPORT BARU
 
 data class Spot(
     val id: String = "",
@@ -30,7 +32,8 @@ data class Spot(
     val photoUrl: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
-    val timestamp: Timestamp? = null
+    val timestamp: Timestamp? = null,
+    val visitDate: Timestamp? = null // FIELD BARU DITAMBAHKAN
 )
 
 class SpotAdapter(
@@ -49,6 +52,16 @@ class SpotAdapter(
         val spot = spots[position]
         holder.binding.tvSpotName.text = spot.name
         holder.binding.tvSpotNote.text = spot.note
+
+        // LOGIKA BARU UNTUK MENAMPILKAN TANGGAL
+        if (spot.visitDate != null) {
+            val sdf = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
+            holder.binding.tvSpotDate.text = "Dikunjungi pada: ${sdf.format(spot.visitDate.toDate())}"
+            holder.binding.tvSpotDate.visibility = View.VISIBLE
+        } else {
+            holder.binding.tvSpotDate.visibility = View.GONE
+        }
+
         holder.itemView.setOnClickListener {
             onItemClicked(spot)
         }
@@ -112,7 +125,7 @@ class HomeActivity : AppCompatActivity() {
 
         firestore.collection("spots")
             .whereEqualTo("uid", currentUser.uid)
-            .orderBy("name", Query.Direction.ASCENDING)
+            .orderBy("visitDate", Query.Direction.DESCENDING) // DIUBAH: Urutkan berdasarkan tanggal kunjungan
             .addSnapshotListener { snapshots, e ->
                 if (e != null) {
                     Log.w(TAG, "Listen failed.", e)

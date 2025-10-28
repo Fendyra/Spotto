@@ -51,6 +51,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         tools:visibility="visible" />
 
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabAddSpot"
         android:layout_width="wrap_content"

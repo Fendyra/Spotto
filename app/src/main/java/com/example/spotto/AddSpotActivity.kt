@@ -2,6 +2,7 @@ package com.example.spotto
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.DatePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
@@ -26,6 +27,8 @@ import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.ktx.storage
 import com.squareup.picasso.Picasso
+import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 
 class AddSpotActivity : AppCompatActivity() {
@@ -38,6 +41,7 @@ class AddSpotActivity : AppCompatActivity() {
 
     private var currentLocation: Location? = null
     private var imageUri: Uri? = null
+    private var selectedDate: Calendar = Calendar.getInstance()
 
     companion object {
         private const val TAG = "AddSpotActivity"
@@ -79,6 +83,27 @@ class AddSpotActivity : AppCompatActivity() {
     private fun setupClickListeners() {
         binding.btnGetLocation.setOnClickListener { requestLocationPermission() }
         binding.btnSaveSpot.setOnClickListener { saveSpot() }
+        binding.etDate.setOnClickListener { showDatePicker() }
+    }
+
+    private fun showDatePicker() {
+        val calendar = Calendar.getInstance()
+        val datePickerDialog = DatePickerDialog(
+            this,
+            { _, year, month, dayOfMonth ->
+                selectedDate.set(Calendar.YEAR, year)
+                selectedDate.set(Calendar.MONTH, month)
+                selectedDate.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+
+                val sdf = SimpleDateFormat("dd MMMM yyyy", Locale.getDefault())
+                binding.etDate.setText(sdf.format(selectedDate.time))
+                binding.tilDate.error = null
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+        datePickerDialog.show()
     }
 
     private val requestGalleryPermissionLauncher =
@@ -173,6 +198,7 @@ class AddSpotActivity : AppCompatActivity() {
     private fun saveSpot() {
         val name = binding.etName.text.toString().trim()
         val note = binding.etNote.text.toString().trim()
+        val date = binding.etDate.text.toString().trim() // TAMBAHAN BARU
         val category = binding.spinnerCategory.selectedItem.toString()
         val currentUser = firebaseAuth.currentUser
 
@@ -186,6 +212,12 @@ class AddSpotActivity : AppCompatActivity() {
             return
         } else binding.tilNote.error = null
 
+        // VALIDASI BARU
+        if (date.isEmpty()) {
+            binding.tilDate.error = "Tanggal kunjungan tidak boleh kosong"
+            return
+        } else binding.tilDate.error = null
+
         if (currentLocation == null) {
             Toast.makeText(this, "Lokasi belum berhasil didapatkan", Toast.LENGTH_SHORT).show()
             return
@@ -198,13 +230,15 @@ class AddSpotActivity : AppCompatActivity() {
 
         setLoading(true, "Menyimpan spot...")
 
+        val visitDateTimestamp = Timestamp(selectedDate.time) // TAMBAHAN BARU
+
         if (imageUri != null)
-            uploadImageAndSaveData(currentUser.uid, name, note, category)
+            uploadImageAndSaveData(currentUser.uid, name, note, category, visitDateTimestamp)
         else
-            saveDataToFirestore(currentUser.uid, name, note, category, "")
+            saveDataToFirestore(currentUser.uid, name, note, category, "", visitDateTimestamp)
     }
 
-    private fun uploadImageAndSaveData(uid: String, name: String, note: String, category: String) {
+    private fun uploadImageAndSaveData(uid: String, name: String, note: String, category: String, visitDate: Timestamp) {
         val timestamp = System.currentTimeMillis()
         val storageRef = storage.reference.child("spot_images/$uid/$timestamp.jpg")
 
@@ -213,7 +247,7 @@ class AddSpotActivity : AppCompatActivity() {
                 .addOnSuccessListener {
                     storageRef.downloadUrl
                         .addOnSuccessListener { uri ->
-                            saveDataToFirestore(uid, name, note, category, uri.toString())
+                            saveDataToFirestore(uid, name, note, category, uri.toString(), visitDate)
                         }
                         .addOnFailureListener { e ->
                             setLoading(false)
@@ -229,7 +263,7 @@ class AddSpotActivity : AppCompatActivity() {
         }
     }
 
-    private fun saveDataToFirestore(uid: String, name: String, note: String, category: String, photoUrl: String) {
+    private fun saveDataToFirestore(uid: String, name: String, note: String, category: String, photoUrl: String, visitDate: Timestamp) {
         currentLocation?.let { loc ->
             val newSpot = hashMapOf(
                 "uid" to uid,
@@ -239,7 +273,8 @@ class AddSpotActivity : AppCompatActivity() {
                 "latitude" to loc.latitude,
                 "longitude" to loc.longitude,
                 "photoUrl" to photoUrl,
-                "timestamp" to Timestamp.now()
+                "timestamp" to Timestamp.now(),
+                "visitDate" to visitDate
             )
 
             firestore.collection("spots")
