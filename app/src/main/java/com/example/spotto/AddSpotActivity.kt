@@ -15,6 +15,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.android.gms.location.Priority
 import com.example.spotto.databinding.ActivityAddSpotBinding
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
@@ -25,6 +26,7 @@ import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.ktx.storage
 import com.squareup.picasso.Picasso
+import java.util.Locale
 
 class AddSpotActivity : AppCompatActivity() {
 
@@ -46,7 +48,6 @@ class AddSpotActivity : AppCompatActivity() {
         binding = ActivityAddSpotBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Inisialisasi Firebase & Location
         firebaseAuth = FirebaseAuth.getInstance()
         firestore = FirebaseFirestore.getInstance()
         storage = Firebase.storage
@@ -76,14 +77,9 @@ class AddSpotActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
-        binding.btnChoosePhoto.setOnClickListener { requestGalleryPermission() }
         binding.btnGetLocation.setOnClickListener { requestLocationPermission() }
         binding.btnSaveSpot.setOnClickListener { saveSpot() }
     }
-
-
-    // Pilih & Tampilkan Foto
-
 
     private val requestGalleryPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
@@ -120,13 +116,11 @@ class AddSpotActivity : AppCompatActivity() {
         pickImageLauncher.launch(intent)
     }
 
-    //  Get Lokasi
-
-
     private val requestLocationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) getLastLocation()
-            else {
+            if (isGranted) {
+                fetchCurrentLocation()
+            } else {
                 Toast.makeText(this, "Izin lokasi ditolak", Toast.LENGTH_SHORT).show()
                 binding.tvLocationStatus.text = "Izin lokasi diperlukan."
             }
@@ -135,40 +129,46 @@ class AddSpotActivity : AppCompatActivity() {
     private fun requestLocationPermission() {
         val permission = Manifest.permission.ACCESS_FINE_LOCATION
         when {
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED -> getLastLocation()
+            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED -> {
+                fetchCurrentLocation()
+            }
             shouldShowRequestPermissionRationale(permission) -> {
                 Toast.makeText(this, "Aplikasi ini butuh lokasi untuk menandai spot", Toast.LENGTH_LONG).show()
                 requestLocationPermissionLauncher.launch(permission)
             }
-            else -> requestLocationPermissionLauncher.launch(permission)
+            else -> {
+                requestLocationPermissionLauncher.launch(permission)
+            }
         }
     }
 
     @SuppressLint("MissingPermission")
-    private fun getLastLocation() {
-        setLoading(true, "Mendapatkan lokasi...")
-        binding.tvLocationStatus.text = "Mendapatkan lokasi..."
+    private fun fetchCurrentLocation() {
+        setLoading(true, "Mendapatkan lokasi saat ini...")
+        binding.tvLocationStatus.text = "Mendapatkan lokasi saat ini..."
 
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener { location ->
+        fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
+            .addOnSuccessListener { location: Location? ->
                 setLoading(false)
                 if (location != null) {
                     currentLocation = location
-                    val lat = "%.6f".format(location.latitude)
-                    val lon = "%.6f".format(location.longitude)
+                    val lat = String.format(Locale.ROOT, "%.6f", location.latitude)
+                    val lon = String.format(Locale.ROOT, "%.6f", location.longitude)
                     binding.tvLocationStatus.text = "Lokasi didapat: ($lat, $lon)"
+                    Log.d(TAG, "Lokasi saat ini didapat: Lat ${location.latitude}, Lon ${location.longitude}")
                 } else {
-                    binding.tvLocationStatus.text = "Gagal dapat lokasi. Pastikan GPS aktif."
+                    binding.tvLocationStatus.text = "Gagal mendapatkan lokasi saat ini. Pastikan GPS & Layanan Lokasi aktif."
+                    Log.w(TAG, "getCurrentLocation mengembalikan null")
+
                 }
             }
             .addOnFailureListener { e ->
                 setLoading(false)
-                binding.tvLocationStatus.text = "Error: ${e.message}"
-                Log.e(TAG, "Gagal mendapatkan lokasi", e)
+                binding.tvLocationStatus.text = "Error mendapatkan lokasi: ${e.message}"
+                Log.e(TAG, "Gagal mendapatkan lokasi saat ini", e)
+
             }
     }
-
-    // Simpan Data ke Firestore
 
     private fun saveSpot() {
         val name = binding.etName.text.toString().trim()
@@ -187,7 +187,7 @@ class AddSpotActivity : AppCompatActivity() {
         } else binding.tilNote.error = null
 
         if (currentLocation == null) {
-            Toast.makeText(this, "Lokasi otomatis belum diambil", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Lokasi belum berhasil didapatkan", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -198,7 +198,6 @@ class AddSpotActivity : AppCompatActivity() {
 
         setLoading(true, "Menyimpan spot...")
 
-        // Upload foto
         if (imageUri != null)
             uploadImageAndSaveData(currentUser.uid, name, note, category)
         else
@@ -231,40 +230,40 @@ class AddSpotActivity : AppCompatActivity() {
     }
 
     private fun saveDataToFirestore(uid: String, name: String, note: String, category: String, photoUrl: String) {
-        val newSpot = hashMapOf(
-            "uid" to uid,
-            "name" to name,
-            "note" to note,
-            "category" to category,
-            "latitude" to currentLocation!!.latitude,
-            "longitude" to currentLocation!!.longitude,
-            "photoUrl" to photoUrl,
-            "timestamp" to Timestamp.now()
-        )
+        currentLocation?.let { loc ->
+            val newSpot = hashMapOf(
+                "uid" to uid,
+                "name" to name,
+                "note" to note,
+                "category" to category,
+                "latitude" to loc.latitude,
+                "longitude" to loc.longitude,
+                "photoUrl" to photoUrl,
+                "timestamp" to Timestamp.now()
+            )
 
-        firestore.collection("spots")
-            .add(newSpot)
-            .addOnSuccessListener {
-                setLoading(false)
-                Toast.makeText(this, "Spot berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                finish()
-            }
-            .addOnFailureListener { e ->
-                setLoading(false)
-                Toast.makeText(this, "Gagal menyimpan: ${e.message}", Toast.LENGTH_SHORT).show()
-                Log.e(TAG, "Gagal menyimpan ke Firestore", e)
-            }
+            firestore.collection("spots")
+                .add(newSpot)
+                .addOnSuccessListener {
+                    setLoading(false)
+                    Toast.makeText(this, "Spot berhasil ditambahkan", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+                .addOnFailureListener { e ->
+                    setLoading(false)
+                    Toast.makeText(this, "Gagal menyimpan: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "Gagal menyimpan ke Firestore", e)
+                }
+        } ?: run {
+            setLoading(false)
+            Toast.makeText(this, "Lokasi tidak valid saat menyimpan", Toast.LENGTH_SHORT).show()
+            Log.e(TAG, "currentLocation null saat mencoba menyimpan ke Firestore")
+        }
     }
 
     private fun setLoading(isLoading: Boolean, message: String = "") {
-        if (isLoading) {
-            binding.progressBar.visibility = View.VISIBLE
-            binding.btnSaveSpot.isEnabled = false
-            binding.btnSaveSpot.text = message
-        } else {
-            binding.progressBar.visibility = View.GONE
-            binding.btnSaveSpot.isEnabled = true
-            binding.btnSaveSpot.text = "Simpan Spot"
-        }
+        binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+        binding.btnSaveSpot.isEnabled = !isLoading
+        binding.btnSaveSpot.text = if (isLoading) message else "Simpan Spot"
     }
 }

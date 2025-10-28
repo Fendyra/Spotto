@@ -98,13 +98,6 @@
                 android:contentDescription="Preview Foto Spot" />
 
             <Button
-                android:id="@+id/btnChoosePhoto"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:text="Pilih Foto" />
-
-            <Button
                 android:id="@+id/btnGetLocation"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
