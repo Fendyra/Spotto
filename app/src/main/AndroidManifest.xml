@@ -45,6 +45,14 @@
         <activity
             android:name=".AddSpotActivity"
             android:exported="false" />
+        <activity
+            android:name=".AddSpotActivity"
+            android:exported="false" />
+        <activity
+            android:name=".DetailActivity"
+            android:exported="false"
+            android:parentActivityName=".HomeActivity"
+            android:theme="@style/Theme.Spotto.Detail" />
 
     </application>
 </manifest>

@@ -14,28 +14,29 @@ import com.example.spotto.databinding.ActivityHomeBinding
 import com.example.spotto.databinding.ItemSpotBinding
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query // Import Query
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.Timestamp
-import android.view.LayoutInflater // <-- TAMBAHKAN INI
-import android.view.ViewGroup // <-- TAMBAHKAN INI
+import android.view.LayoutInflater
+import android.view.ViewGroup
 
-// Data class untuk menampung data Spot
 data class Spot(
     val id: String = "",
     val uid: String = "",
     val name: String = "",
     val note: String = "",
-    val category: String = "", // <-- TAMBAHKAN INI
-    val photoUrl: String = "", // <-- TAMBAHKAN INI
+    val category: String = "",
+    val photoUrl: String = "",
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
     val timestamp: Timestamp? = null
 )
 
-// Skeleton Adapter untuk RecyclerView
-class SpotAdapter(private val spots: List<Spot>) : RecyclerView.Adapter<SpotAdapter.SpotViewHolder>() {
+class SpotAdapter(
+    private val spots: List<Spot>,
+    private val onItemClicked: (Spot) -> Unit
+) : RecyclerView.Adapter<SpotAdapter.SpotViewHolder>() {
 
     class SpotViewHolder(val binding: ItemSpotBinding) : RecyclerView.ViewHolder(binding.root)
 
@@ -48,8 +49,9 @@ class SpotAdapter(private val spots: List<Spot>) : RecyclerView.Adapter<SpotAdap
         val spot = spots[position]
         holder.binding.tvSpotName.text = spot.name
         holder.binding.tvSpotNote.text = spot.note
-        // Tambahkan onClickListener di sini jika ingin ada aksi saat item diklik
-        // holder.itemView.setOnClickListener { /* Aksi detail spot */ }
+        holder.itemView.setOnClickListener {
+            onItemClicked(spot)
+        }
     }
 
     override fun getItemCount() = spots.size
@@ -65,7 +67,7 @@ class HomeActivity : AppCompatActivity() {
     private val spotList = mutableListOf<Spot>()
 
     private companion object {
-        const val TAG = "HomeActivity" // Untuk logging
+        const val TAG = "HomeActivity"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -74,32 +76,31 @@ class HomeActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         firebaseAuth = FirebaseAuth.getInstance()
-        firestore = Firebase.firestore // Inisialisasi Firestore
+        firestore = Firebase.firestore
 
-        // Cek user saat ini, jika null kembali ke Login
         val currentUser = firebaseAuth.currentUser
         if (currentUser == null) {
             goToLogin()
             return
         }
 
-        // Setup Toolbar
         setSupportActionBar(binding.toolbar)
 
-        // Setup RecyclerView
         setupRecyclerView()
 
-        // Setup FAB Click Listener
         binding.fabAddSpot.setOnClickListener {
             startActivity(Intent(this, AddSpotActivity::class.java))
         }
 
-        // Muat data dari Firestore
         loadSpotsFromFirestore()
     }
 
     private fun setupRecyclerView() {
-        spotAdapter = SpotAdapter(spotList)
+        spotAdapter = SpotAdapter(spotList) { spot ->
+            val intent = Intent(this, DetailActivity::class.java)
+            intent.putExtra("SPOT_ID", spot.id)
+            startActivity(intent)
+        }
         binding.rvSpots.apply {
             layoutManager = LinearLayoutManager(this@HomeActivity)
             adapter = spotAdapter
@@ -107,12 +108,11 @@ class HomeActivity : AppCompatActivity() {
     }
 
     private fun loadSpotsFromFirestore() {
-        val currentUser = firebaseAuth.currentUser ?: return // Pastikan user tidak null
+        val currentUser = firebaseAuth.currentUser ?: return
 
-        // Query ke koleksi 'spots' dan filter berdasarkan UID pengguna saat ini
         firestore.collection("spots")
             .whereEqualTo("uid", currentUser.uid)
-            .orderBy("name", Query.Direction.ASCENDING) // Urutkan berdasarkan nama, bisa diganti timestamp jika ada
+            .orderBy("name", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshots, e ->
                 if (e != null) {
                     Log.w(TAG, "Listen failed.", e)
@@ -121,14 +121,13 @@ class HomeActivity : AppCompatActivity() {
                 }
 
                 if (snapshots != null) {
-                    spotList.clear() // Kosongkan list sebelum diisi ulang
+                    spotList.clear()
                     for (doc in snapshots) {
-                        val spot = doc.toObject(Spot::class.java).copy(id = doc.id) // Ambil data dan ID dokumen
+                        val spot = doc.toObject(Spot::class.java).copy(id = doc.id)
                         spotList.add(spot)
                     }
-                    spotAdapter.notifyDataSetChanged() // Beri tahu adapter ada data baru
+                    spotAdapter.notifyDataSetChanged()
 
-                    // Tampilkan atau sembunyikan empty state
                     binding.tvEmptyState.visibility = if (spotList.isEmpty()) View.VISIBLE else View.GONE
                     binding.rvSpots.visibility = if (spotList.isEmpty()) View.GONE else View.VISIBLE
 
@@ -141,7 +140,6 @@ class HomeActivity : AppCompatActivity() {
             }
     }
 
-    // --- Menu Toolbar ---
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.home_menu, menu)
         return true
@@ -167,6 +165,6 @@ class HomeActivity : AppCompatActivity() {
         val intent = Intent(this, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
-        finish() // Tutup HomeActivity
+        finish()
     }
 }

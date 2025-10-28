@@ -34,12 +34,11 @@ class AddSpotActivity : AppCompatActivity() {
     private lateinit var storage: FirebaseStorage
     private lateinit var fusedLocationClient: FusedLocationProviderClient
 
-    // Variabel untuk menyimpan data
     private var currentLocation: Location? = null
     private var imageUri: Uri? = null
 
-    private companion object {
-        const val TAG = "AddSpotActivity"
+    companion object {
+        private const val TAG = "AddSpotActivity"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,7 +69,6 @@ class AddSpotActivity : AppCompatActivity() {
     }
 
     private fun setupSpinner() {
-        // Ambil array dari strings.xml
         val categories = resources.getStringArray(R.array.spot_categories)
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categories)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
@@ -78,95 +76,71 @@ class AddSpotActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
-        binding.btnChoosePhoto.setOnClickListener {
-            requestGalleryPermission()
-        }
-        binding.btnGetLocation.setOnClickListener {
-            requestLocationPermission()
-        }
-        binding.btnSaveSpot.setOnClickListener {
-            saveSpot()
-        }
+        binding.btnChoosePhoto.setOnClickListener { requestGalleryPermission() }
+        binding.btnGetLocation.setOnClickListener { requestLocationPermission() }
+        binding.btnSaveSpot.setOnClickListener { saveSpot() }
     }
 
-    // --- Bagian Logika Foto ---
 
-    // 1. Launcher untuk Izin Galeri
+    // Pilih & Tampilkan Foto
+
+
     private val requestGalleryPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                openGallery()
-            } else {
-                Toast.makeText(this, "Izin galeri ditolak", Toast.LENGTH_SHORT).show()
-            }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) openGallery()
+            else Toast.makeText(this, "Izin galeri ditolak", Toast.LENGTH_SHORT).show()
         }
 
-    // 2. Launcher untuk Memilih Foto
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK && result.data != null) {
                 imageUri = result.data?.data
-                // Tampilkan preview menggunakan Picasso
                 binding.ivPhotoPreview.visibility = View.VISIBLE
                 Picasso.get().load(imageUri).into(binding.ivPhotoPreview)
             }
         }
 
-    // 3. Cek Izin & Buka Galeri
     private fun requestGalleryPermission() {
-        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             Manifest.permission.READ_MEDIA_IMAGES
-        } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
-        }
+        else Manifest.permission.READ_EXTERNAL_STORAGE
 
         when {
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED -> {
-                openGallery()
-            }
+            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED -> openGallery()
             shouldShowRequestPermissionRationale(permission) -> {
                 Toast.makeText(this, "Izin diperlukan untuk memilih foto", Toast.LENGTH_LONG).show()
                 requestGalleryPermissionLauncher.launch(permission)
             }
-            else -> {
-                requestGalleryPermissionLauncher.launch(permission)
-            }
+            else -> requestGalleryPermissionLauncher.launch(permission)
         }
     }
 
     private fun openGallery() {
-        val intent = Intent(Intent.ACTION_PICK)
-        intent.type = "image/*"
+        val intent = Intent(Intent.ACTION_PICK).apply { type = "image/*" }
         pickImageLauncher.launch(intent)
     }
 
-    // --- Bagian Logika Lokasi ---
+    //  Get Lokasi
 
-    // 1. Launcher untuk Izin Lokasi
+
     private val requestLocationPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                getLastLocation()
-            } else {
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) getLastLocation()
+            else {
                 Toast.makeText(this, "Izin lokasi ditolak", Toast.LENGTH_SHORT).show()
                 binding.tvLocationStatus.text = "Izin lokasi diperlukan."
             }
         }
 
-    // 2. Cek Izin & Ambil Lokasi
     private fun requestLocationPermission() {
         val permission = Manifest.permission.ACCESS_FINE_LOCATION
         when {
-            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED -> {
-                getLastLocation()
-            }
+            ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED -> getLastLocation()
             shouldShowRequestPermissionRationale(permission) -> {
                 Toast.makeText(this, "Aplikasi ini butuh lokasi untuk menandai spot", Toast.LENGTH_LONG).show()
                 requestLocationPermissionLauncher.launch(permission)
             }
-            else -> {
-                requestLocationPermissionLauncher.launch(permission)
-            }
+            else -> requestLocationPermissionLauncher.launch(permission)
         }
     }
 
@@ -176,12 +150,12 @@ class AddSpotActivity : AppCompatActivity() {
         binding.tvLocationStatus.text = "Mendapatkan lokasi..."
 
         fusedLocationClient.lastLocation
-            .addOnSuccessListener { location: Location? ->
+            .addOnSuccessListener { location ->
                 setLoading(false)
                 if (location != null) {
                     currentLocation = location
-                    val lat = String.format("%.6f", location.latitude)
-                    val lon = String.format("%.6f", location.longitude)
+                    val lat = "%.6f".format(location.latitude)
+                    val lon = "%.6f".format(location.longitude)
                     binding.tvLocationStatus.text = "Lokasi didapat: ($lat, $lon)"
                 } else {
                     binding.tvLocationStatus.text = "Gagal dapat lokasi. Pastikan GPS aktif."
@@ -194,7 +168,7 @@ class AddSpotActivity : AppCompatActivity() {
             }
     }
 
-    // --- Bagian Logika Simpan ---
+    // Simpan Data ke Firestore
 
     private fun saveSpot() {
         val name = binding.etName.text.toString().trim()
@@ -202,18 +176,15 @@ class AddSpotActivity : AppCompatActivity() {
         val category = binding.spinnerCategory.selectedItem.toString()
         val currentUser = firebaseAuth.currentUser
 
-        // Validasi
         if (name.isEmpty()) {
             binding.tilName.error = "Nama tempat tidak boleh kosong"
             return
-        }
-        binding.tilName.error = null
+        } else binding.tilName.error = null
 
         if (note.isEmpty()) {
             binding.tilNote.error = "Catatan tidak boleh kosong"
             return
-        }
-        binding.tilNote.error = null
+        } else binding.tilNote.error = null
 
         if (currentLocation == null) {
             Toast.makeText(this, "Lokasi otomatis belum diambil", Toast.LENGTH_SHORT).show()
@@ -227,54 +198,39 @@ class AddSpotActivity : AppCompatActivity() {
 
         setLoading(true, "Menyimpan spot...")
 
-        // Cek apakah ada foto yang diupload
-        if (imageUri != null) {
+        // Upload foto
+        if (imageUri != null)
             uploadImageAndSaveData(currentUser.uid, name, note, category)
-        } else {
-            // Simpan tanpa foto
+        else
             saveDataToFirestore(currentUser.uid, name, note, category, "")
-        }
     }
 
-    private fun uploadImageAndSaveData(
-        uid: String,
-        name: String,
-        note: String,
-        category: String
-    ) {
+    private fun uploadImageAndSaveData(uid: String, name: String, note: String, category: String) {
         val timestamp = System.currentTimeMillis()
         val storageRef = storage.reference.child("spot_images/$uid/$timestamp.jpg")
 
         imageUri?.let {
             storageRef.putFile(it)
                 .addOnSuccessListener {
-                    // Ambil URL download
                     storageRef.downloadUrl
                         .addOnSuccessListener { uri ->
-                            val photoUrl = uri.toString()
-                            saveDataToFirestore(uid, name, note, category, photoUrl)
+                            saveDataToFirestore(uid, name, note, category, uri.toString())
                         }
                         .addOnFailureListener { e ->
-                            Log.e(TAG, "Gagal mendapatkan download URL", e)
                             setLoading(false)
                             Toast.makeText(this, "Gagal upload: ${e.message}", Toast.LENGTH_SHORT).show()
+                            Log.e(TAG, "Gagal mendapatkan download URL", e)
                         }
                 }
                 .addOnFailureListener { e ->
-                    Log.e(TAG, "Gagal upload foto", e)
                     setLoading(false)
                     Toast.makeText(this, "Gagal upload: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Log.e(TAG, "Gagal upload foto", e)
                 }
         }
     }
 
-    private fun saveDataToFirestore(
-        uid: String,
-        name: String,
-        note: String,
-        category: String,
-        photoUrl: String
-    ) {
+    private fun saveDataToFirestore(uid: String, name: String, note: String, category: String, photoUrl: String) {
         val newSpot = hashMapOf(
             "uid" to uid,
             "name" to name,
@@ -291,7 +247,7 @@ class AddSpotActivity : AppCompatActivity() {
             .addOnSuccessListener {
                 setLoading(false)
                 Toast.makeText(this, "Spot berhasil ditambahkan", Toast.LENGTH_SHORT).show()
-                finish() // Kembali ke HomeActivity
+                finish()
             }
             .addOnFailureListener { e ->
                 setLoading(false)

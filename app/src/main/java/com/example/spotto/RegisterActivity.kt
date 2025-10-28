@@ -28,7 +28,7 @@ class RegisterActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Validasi password minimal 6 karakter (syarat Firebase)
+            // Validasi password
             if (password.length < 6) {
                 Toast.makeText(this, "Password minimal 6 karakter", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -37,7 +37,6 @@ class RegisterActivity : AppCompatActivity() {
             firebaseAuth.createUserWithEmailAndPassword(email, password)
                 .addOnSuccessListener {
                     Toast.makeText(this, "Registrasi Berhasil", Toast.LENGTH_SHORT).show()
-                    // Kirim ke HomeActivity dan hapus stack sebelumnya
                     val intent = Intent(this, HomeActivity::class.java)
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     startActivity(intent)

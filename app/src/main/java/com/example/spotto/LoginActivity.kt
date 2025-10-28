@@ -31,7 +31,6 @@ class LoginActivity : AppCompatActivity() {
             firebaseAuth.signInWithEmailAndPassword(email, password)
                 .addOnSuccessListener {
                     Toast.makeText(this, "Login Berhasil", Toast.LENGTH_SHORT).show()
-                    // Kirim ke HomeActivity dan hapus stack sebelumnya
                     val intent = Intent(this, HomeActivity::class.java)
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                     startActivity(intent)
